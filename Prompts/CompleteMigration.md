@@ -4,10 +4,17 @@
 
 You are tasked with performing a complete enterprise platform migration that combines three transformations:
 1. Backend: .NET Core 3.1 → .NET 8 LTS with GraphQL API alongside REST
-2. Frontend: Angular → Next.js 15 with Apollo Client
+2. Frontend: Angular → Next.js 15 with Apollo Client  
 3. Architecture: Monolithic REST → Modern GraphQL with backwards compatibility
 
-**Source**: `/Users/MartinGonella/Desktop/Rocket_Demo/MergedApp-LendPro/`
+**Migration Strategy**: This migration leverages existing work from separate migration projects to create a unified, comprehensive solution. Each source project contains specialized implementations that will be combined for the complete migration.
+
+**Sources**: 
+- Primary: `/Users/MartinGonella/Desktop/Rocket_Demo/MergedApp-LendPro/` (merged Angular + .NET Core 3.1)
+- .NET 8 Migration: `/Users/MartinGonella/Desktop/Rocket_Demo/DotNET-LendPro/` (backend-v8)
+- GraphQL Implementation: `/Users/MartinGonella/Desktop/Rocket_Demo/GraphQL-LendPro/` (backend-graphql)
+- Next.js Migration: `/Users/MartinGonella/Desktop/Rocket_Demo/NextJS-LendPro/` (frontend)
+
 **Target**: `/Users/MartinGonella/Desktop/Rocket_Demo/Rocket-LendPro/`
 
 ---
@@ -28,16 +35,55 @@ mkdir -p tests
 mkdir -p ops/scripts
 ```
 
-### Step 1.2: Copy Source Files
+### Step 1.2: Copy and Merge Source Files
 ```bash
-# Copy backend for migration
+# Copy base structure from merged project
 cp -r "../MergedApp-LendPro/backend/." "./backend-net8/"
-
-# Copy database assets
 cp -r "../MergedApp-LendPro/database/." "./database/"
 
-# Copy root files if they exist
+# Copy enhanced .NET 8 files from DotNET-LendPro
+cp -r "../DotNET-LendPro/backend-v8/MortgagePlatform.API/GlobalUsings.cs" "./backend-net8/MortgagePlatform.API/" 2>/dev/null || true
+cp -r "../DotNET-LendPro/backend-v8/MortgagePlatform.API/Program.cs" "./backend-net8/MortgagePlatform.API/" 2>/dev/null || true
+cp -r "../DotNET-LendPro/backend-v8/MortgagePlatform.API/MortgagePlatform.API.csproj" "./backend-net8/MortgagePlatform.API/" 2>/dev/null || true
+
+# Copy GraphQL implementation from GraphQL-LendPro
+mkdir -p "./backend-net8/MortgagePlatform.API/GraphQL"
+cp -r "../GraphQL-LendPro/backend-graphql/MortgagePlatform.API/GraphQL/." "./backend-net8/MortgagePlatform.API/GraphQL/" 2>/dev/null || true
+
+# Copy Next.js frontend from NextJS-LendPro
+cp -r "../NextJS-LendPro/frontend/." "./frontend-next/" 2>/dev/null || true
+
+# Copy enhanced run script if available
+cp "../DotNET-LendPro/run-app.sh" "./" 2>/dev/null || true
+cp "../GraphQL-LendPro/run-app.sh" "./" 2>/dev/null || true
+cp "../NextJS-LendPro/start-app.sh" "./run-app.sh" 2>/dev/null || true
+
+# Copy documentation
 cp "../MergedApp-LendPro/README.md" "./" 2>/dev/null || true
+```
+
+### Step 1.3: Merge Enhanced Configurations
+```bash
+# Merge enhanced appsettings from different projects if they exist
+if [ -f "../GraphQL-LendPro/backend-graphql/MortgagePlatform.API/appsettings.json" ]; then
+    # Preserve GraphQL configurations
+    echo "Merging GraphQL configurations..."
+fi
+
+if [ -f "../DotNET-LendPro/backend-v8/MortgagePlatform.API/appsettings.json" ]; then
+    # Preserve .NET 8 specific configurations
+    echo "Merging .NET 8 configurations..."
+fi
+
+if [ -f "../NextJS-LendPro/frontend/next.config.ts" ]; then
+    # Preserve Next.js configurations
+    cp "../NextJS-LendPro/frontend/next.config.ts" "./frontend-next/" 2>/dev/null || true
+fi
+
+# Copy any enhanced package.json configurations
+if [ -f "../NextJS-LendPro/frontend/package.json" ]; then
+    cp "../NextJS-LendPro/frontend/package.json" "./frontend-next/" 2>/dev/null || true
+fi
 ```
 
 **CONTINUE IMMEDIATELY** to Phase 2.
@@ -47,7 +93,7 @@ cp "../MergedApp-LendPro/README.md" "./" 2>/dev/null || true
 ## PHASE 2: .NET 8 LTS MIGRATION
 
 ### Step 2.1: Update All Project Files
-For each .csproj in backend-net8/, update:
+Use enhanced configurations from DotNET-LendPro project. For each .csproj in backend-net8/, update:
 
 1. **Framework & Properties**:
 ```xml
@@ -74,7 +120,7 @@ For each .csproj in backend-net8/, update:
 ```
 
 ### Step 2.2: Create Modern Program.cs
-Replace Startup.cs pattern with minimal API Program.cs:
+Use the enhanced Program.cs from DotNET-LendPro with GraphQL integration from GraphQL-LendPro. Replace Startup.cs pattern with minimal API Program.cs:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -205,17 +251,23 @@ public class PropertySearchDto
 
 ## PHASE 3: GRAPHQL API IMPLEMENTATION
 
-### Step 3.1: Create GraphQL Structure
+### Step 3.1: Leverage Existing GraphQL Implementation
+The GraphQL structure should already be copied from GraphQL-LendPro. Verify the structure exists:
 ```bash
 cd backend-net8/MortgagePlatform.API
-mkdir -p GraphQL/Queries
-mkdir -p GraphQL/Mutations
-mkdir -p GraphQL/Types
-mkdir -p GraphQL/Extensions
+# Verify GraphQL structure exists (should be copied from GraphQL-LendPro)
+ls -la GraphQL/
+ls -la GraphQL/Queries/
+ls -la GraphQL/Mutations/
+ls -la GraphQL/Types/
+ls -la GraphQL/Extensions/
+
+# Create any missing directories
+mkdir -p GraphQL/Queries GraphQL/Mutations GraphQL/Types GraphQL/Extensions GraphQL/DataLoaders GraphQL/Subscriptions
 ```
 
-### Step 3.2: Create GraphQL Types
-Create GraphQL/Types/PropertyType.cs:
+### Step 3.2: Verify/Update GraphQL Types
+The GraphQL types should already exist from GraphQL-LendPro. Verify or create GraphQL/Types/PropertyType.cs:
 
 ```csharp
 using HotChocolate;
@@ -411,22 +463,37 @@ public class GraphQLRequestInterceptor : DefaultHttpRequestInterceptor
 
 ## PHASE 4: NEXT.JS 15 FRONTEND
 
-### Step 4.1: Initialize Next.js Project
+### Step 4.1: Leverage Existing Next.js Implementation
+The Next.js project should already be copied from NextJS-LendPro. Verify structure and install dependencies:
 ```bash
 cd ../../frontend-next
-npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias "@/*"
+# Verify Next.js structure exists
+ls -la app/
+ls -la components/
+ls -la lib/
+
+# If package.json exists, install dependencies
+if [ -f package.json ]; then
+    npm install
+else
+    # Create new Next.js project if not copied
+    npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias "@/*"
+fi
 ```
 
-### Step 4.2: Install Dependencies
+### Step 4.2: Verify/Install Dependencies  
+Dependencies should already be configured in NextJS-LendPro's package.json. Verify and install if needed:
 ```bash
+# Check if all required dependencies are installed
+npm list @apollo/client graphql axios react-hook-form || \
 npm install @apollo/client graphql axios react-hook-form @hookform/resolvers zod \
   recharts chart.js react-chartjs-2 date-fns bcryptjs jsonwebtoken \
   @radix-ui/react-checkbox @radix-ui/react-select @radix-ui/react-progress \
   clsx tailwind-merge lucide-react
 ```
 
-### Step 4.3: Configure Next.js for Images
-Create next.config.ts:
+### Step 4.3: Verify Next.js Configuration
+Configuration should already exist from NextJS-LendPro. Verify or create next.config.ts:
 
 ```typescript
 export default {
@@ -445,8 +512,8 @@ export default {
 }
 ```
 
-### Step 4.4: Create Apollo Client Configuration
-Create lib/apollo-client.ts:
+### Step 4.4: Verify Apollo Client Configuration
+Apollo Client should already be configured in NextJS-LendPro. Verify or create lib/apollo-client.ts:
 
 ```typescript
 import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
@@ -500,8 +567,8 @@ apiClient.interceptors.request.use((config) => {
 });
 ```
 
-### Step 4.5: Create Core UI Components
-Create components/ui/button.tsx:
+### Step 4.5: Verify Core UI Components
+UI Components should already exist in NextJS-LendPro. Verify or create components/ui/button.tsx:
 
 ```typescript
 import * as React from "react"
@@ -1105,4 +1172,10 @@ Before completion, verify:
 - [ ] No console errors or warnings
 - [ ] Performance meets requirements
 
-**MIGRATION COMPLETE** - The Rocket-LendPro platform now features a modern .NET 8 backend with dual REST/GraphQL APIs and a Next.js 15 frontend, combining the best of all three migrations into a single, cohesive enterprise application.
+**MIGRATION COMPLETE** - The Rocket-LendPro platform now features a modern .NET 8 backend with dual REST/GraphQL APIs and a Next.js 15 frontend, combining implementations from:
+- DotNET-LendPro (.NET 8 migration)  
+- GraphQL-LendPro (GraphQL implementation)
+- NextJS-LendPro (Next.js frontend)
+- MergedApp-LendPro (base application)
+
+This unified approach creates a single, cohesive enterprise application leveraging the best features from all migration projects.
