@@ -1,13 +1,14 @@
-# COMPLETE MIGRATION: .NET 8 + GraphQL + Next.js 15 (One-Shot Execution)
+# COMPLETE MIGRATION: .NET 8 + GraphQL + Next.js 15 (Production-Ready)
 
-**EXECUTE ALL STEPS SEQUENTIALLY WITHOUT STOPPING. DO NOT PAUSE FOR CONFIRMATION.**
+⚠️ **CRITICAL: This is a comprehensive enterprise migration prompt enhanced with real-world fixes**
+⚠️ **Execute ALL steps sequentially. DO NOT skip validation steps or assume everything works**
 
-You are tasked with performing a complete enterprise platform migration that combines three transformations:
-1. Backend: .NET Core 3.1 → .NET 8 LTS with GraphQL API alongside REST
-2. Frontend: Angular → Next.js 15 with Apollo Client  
-3. Architecture: Monolithic REST → Modern GraphQL with backwards compatibility
+You are performing a complete enterprise platform migration combining three transformations:
+1. **Backend**: .NET Core 3.1 → .NET 8 LTS with HotChocolate GraphQL + REST APIs
+2. **Frontend**: Angular → Next.js 15 with Apollo Client + Axios hybrid approach  
+3. **Architecture**: Monolithic REST → Dual API (GraphQL + REST) with backwards compatibility
 
-**Migration Strategy**: This migration leverages existing work from separate migration projects to create a unified, comprehensive solution. Each source project contains specialized implementations that will be combined for the complete migration.
+**Migration Strategy**: Leverage existing specialized implementations while addressing known integration issues that occur during real-world migrations.
 
 **Sources**: 
 - Primary: `/Users/MartinGonella/Desktop/Rocket_Demo/MergedApp-LendPro/` (merged Angular + .NET Core 3.1)
@@ -16,6 +17,27 @@ You are tasked with performing a complete enterprise platform migration that com
 - Next.js Migration: `/Users/MartinGonella/Desktop/Rocket_Demo/NextJS-LendPro/` (frontend)
 
 **Target**: `/Users/MartinGonella/Desktop/Rocket_Demo/Rocket-LendPro/`
+
+## ⚠️ KNOWN ISSUES TO ADDRESS DURING MIGRATION
+
+### Critical Backend Issues:
+1. **Ambiguous Authorize Attributes**: Use `[HotChocolate.Authorization.Authorize]` instead of `[Authorize]`
+2. **Port Configuration**: Ensure consistent port 5001 across all configs (not 5002/5003)
+3. **GraphQL Schema Mismatches**: Frontend queries must exactly match backend field names
+4. **DbContext Conflicts**: Use `IDbContextFactory<T>` for GraphQL, regular `DbContext` for REST
+
+### Critical Frontend Issues:
+1. **Package Version Incompatibilities**: Some package versions don't exist - use tested versions
+2. **Mock Data vs Real API**: Components often use hardcoded mock data instead of API calls
+3. **Field Name Mismatches**: `isFavorite` vs `isFavorited`, `listedDate` vs `listingDate`
+4. **GraphQL Query Parameter Names**: Backend expects `search:` not `where:` for property queries
+5. **Null Data Handling**: Components crash with "Cannot read properties of undefined"
+
+### Integration Issues:
+1. **API Client Configuration**: URLs must point to correct ports
+2. **Authentication Flow**: JWT tokens must work for both REST and GraphQL
+3. **CORS Configuration**: Must allow both frontend ports (3000, 4200)
+4. **Image URLs**: Many Unsplash URLs return 404 - need fallback handling
 
 ---
 
@@ -119,8 +141,8 @@ Use enhanced configurations from DotNET-LendPro project. For each .csproj in bac
 <PackageReference Include="HotChocolate.AspNetCore.Authorization" Version="13.9.12" />
 ```
 
-### Step 2.2: Create Modern Program.cs
-Use the enhanced Program.cs from DotNET-LendPro with GraphQL integration from GraphQL-LendPro. Replace Startup.cs pattern with minimal API Program.cs:
+### Step 2.2: Create Modern Program.cs with Fixed Configurations
+⚠️ **CRITICAL**: This Program.cs includes fixes for real-world issues encountered during migration:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -130,8 +152,10 @@ using System.Text;
 using Serilog;
 using MortgagePlatform.API.Data;
 using MortgagePlatform.API.Services;
-using MortgagePlatform.API.GraphQL;
-using HotChocolate.AspNetCore;
+using MortgagePlatform.API.GraphQL.Queries;
+using MortgagePlatform.API.GraphQL.Mutations;
+using MortgagePlatform.API.GraphQL.Types;
+using MortgagePlatform.API.GraphQL.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -148,11 +172,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Database with factory pattern for GraphQL
+// ⚠️ CRITICAL: Dual DbContext setup to avoid conflicts
+// Factory pattern for GraphQL (thread-safe, resolves concurrency issues)
 builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Also add regular DbContext for REST controllers
+// Regular DbContext for REST controllers
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -176,12 +201,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// CORS for both Angular and Next.js
+// ⚠️ CRITICAL: CORS must include all possible frontend ports
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:4200", "http://localhost:4001")
+        policy.WithOrigins(
+                "http://localhost:3000",    // Next.js
+                "http://localhost:4200",    // Angular (legacy)
+                "http://localhost:4001",    // Alternative ports
+                "http://localhost:8080"     // Dev server alternatives
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -194,17 +224,22 @@ builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<IMortgageService, MortgageService>();
 builder.Services.AddScoped<ILoanService, LoanService>();
 
-// GraphQL Configuration (prepare for Phase 3)
+// ⚠️ CRITICAL: GraphQL Configuration with proper type registration
 builder.Services
     .AddGraphQLServer()
     .AddQueryType<Query>()
     .AddMutationType<Mutation>()
+    .AddType<PropertyType>()  // ⚠️ CRITICAL: Explicitly register PropertyType
     .AddAuthorization()
     .AddProjections()
     .AddFiltering()
     .AddSorting()
     .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = builder.Environment.IsDevelopment())
     .AddHttpRequestInterceptor<GraphQLRequestInterceptor>();
+
+// ⚠️ CRITICAL: Add health check endpoint for startup validation
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>();
 
 var app = builder.Build();
 
@@ -215,17 +250,33 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// ⚠️ CRITICAL: Middleware order is crucial for GraphQL + REST coexistence
 app.UseRouting();
-app.UseCors("AllowAll");
+app.UseCors("AllowAll");  // Must be before Auth
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ⚠️ CRITICAL: Health check for startup validation
+app.MapHealthChecks("/health");
+
 // Map both REST and GraphQL endpoints
 app.MapControllers(); // REST endpoints remain available
-app.MapGraphQL(); // GraphQL at /graphql
+app.MapGraphQL();     // GraphQL at /graphql
 
-app.Run();
+// ⚠️ CRITICAL: Ensure database is created and seeded
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.EnsureCreated();
+    
+    // Seed admin user if not exists
+    if (!context.Users.Any(u => u.Email == "admin@mortgageplatform.com"))
+    {
+        // Add seeding logic
+    }
+}
+
+app.Run("http://localhost:5001");  // ⚠️ CRITICAL: Explicit port configuration
 ```
 
 ### Step 2.3: Fix DTOs for Nullable References
@@ -266,13 +317,14 @@ ls -la GraphQL/Extensions/
 mkdir -p GraphQL/Queries GraphQL/Mutations GraphQL/Types GraphQL/Extensions GraphQL/DataLoaders GraphQL/Subscriptions
 ```
 
-### Step 3.2: Verify/Update GraphQL Types
-The GraphQL types should already exist from GraphQL-LendPro. Verify or create GraphQL/Types/PropertyType.cs:
+### Step 3.2: Create Production-Ready GraphQL Types
+⚠️ **CRITICAL**: This PropertyType includes fixes for real-world GraphQL issues:
 
 ```csharp
-using HotChocolate;
 using HotChocolate.Types;
+using Microsoft.EntityFrameworkCore;
 using MortgagePlatform.API.Models;
+using MortgagePlatform.API.Data;
 
 namespace MortgagePlatform.API.GraphQL.Types;
 
@@ -280,55 +332,105 @@ public class PropertyType : ObjectType<Property>
 {
     protected override void Configure(IObjectTypeDescriptor<Property> descriptor)
     {
+        // ⚠️ CRITICAL: Explicit field mapping prevents GraphQL schema issues
         descriptor.Field(p => p.Id);
         descriptor.Field(p => p.Address);
         descriptor.Field(p => p.City);
         descriptor.Field(p => p.State);
+        descriptor.Field(p => p.ZipCode);
         descriptor.Field(p => p.Price);
         descriptor.Field(p => p.Bedrooms);
+        descriptor.Field(p => p.Bathrooms);
+        descriptor.Field(p => p.SquareFeet);
+        descriptor.Field(p => p.PropertyType);
+        descriptor.Field(p => p.Description);
+        descriptor.Field(p => p.ImageUrl);
+        descriptor.Field(p => p.ListedDate);  // ⚠️ CRITICAL: Use exact property name from model
+        descriptor.Field(p => p.IsActive);
         
+        // ⚠️ CRITICAL: Custom isFavorite field resolver with proper error handling
         descriptor.Field("isFavorite")
             .Type<NonNullType<BooleanType>>()
             .Resolve(async ctx =>
             {
-                if (!ctx.ContextData.TryGetValue("UserId", out var userIdObj) || 
-                    userIdObj is not int userId)
+                // Check if user is authenticated - return false if not
+                if (!ctx.ContextData.TryGetValue("UserId", out var userIdObj) || userIdObj is not int userId)
                 {
                     return false;
                 }
                 
-                var dbContextFactory = ctx.Service<IDbContextFactory<ApplicationDbContext>>();
-                using var dbContext = await dbContextFactory.CreateDbContextAsync();
-                
-                return await dbContext.FavoriteProperties.AnyAsync(fp => 
-                    fp.PropertyId == ctx.Parent<Property>().Id && 
-                    fp.UserId == userId);
+                try 
+                {
+                    // ⚠️ CRITICAL: Use DbContextFactory to avoid concurrency issues
+                    var dbContextFactory = ctx.Service<IDbContextFactory<ApplicationDbContext>>();
+                    using var dbContext = await dbContextFactory.CreateDbContextAsync();
+                    
+                    return await dbContext.FavoriteProperties.AnyAsync(fp => 
+                        fp.PropertyId == ctx.Parent<Property>().Id && 
+                        fp.UserId == userId);
+                }
+                catch (Exception ex)
+                {
+                    // ⚠️ CRITICAL: Log error but don't break the query
+                    // In production, use proper logging
+                    Console.WriteLine($"Error checking favorite status: {ex.Message}");
+                    return false;
+                }
             });
     }
 }
 ```
 
-### Step 3.3: Create Query Root
-Create GraphQL/Queries/Query.cs:
+### Step 3.3: Create Query Root with Real-World Fixes
+⚠️ **CRITICAL**: This Query class includes fixes for common GraphQL parameter issues:
 
 ```csharp
 using HotChocolate;
 using HotChocolate.Types;
 using HotChocolate.Data;
 using Microsoft.EntityFrameworkCore;
+using MortgagePlatform.API.Models;
+using MortgagePlatform.API.Data;
+using MortgagePlatform.API.GraphQL.Types;
 
 namespace MortgagePlatform.API.GraphQL.Queries;
 
 public class Query
 {
+    // ⚠️ CRITICAL: Property search with correct parameter name (search, not where)
     [UseDbContext(typeof(ApplicationDbContext))]
     [UsePaging]
+    [UseProjection]
     [UseFiltering]
     [UseSorting]
     public IQueryable<Property> GetProperties(
-        [Service(ServiceKind.Resolver)] ApplicationDbContext dbContext)
+        [Service(ServiceKind.Resolver)] ApplicationDbContext dbContext,
+        PropertySearchInput? search = null)  // ⚠️ CRITICAL: Parameter name must be 'search'
     {
-        return dbContext.Properties.Where(p => p.IsActive);
+        var query = dbContext.Properties.Where(p => p.IsActive);
+        
+        if (search != null)
+        {
+            if (!string.IsNullOrEmpty(search.City))
+                query = query.Where(p => p.City.Contains(search.City));
+            
+            if (!string.IsNullOrEmpty(search.State))
+                query = query.Where(p => p.State == search.State);
+            
+            if (search.MinPrice.HasValue)
+                query = query.Where(p => p.Price >= search.MinPrice);
+            
+            if (search.MaxPrice.HasValue)
+                query = query.Where(p => p.Price <= search.MaxPrice);
+            
+            if (search.MinBedrooms.HasValue)
+                query = query.Where(p => p.Bedrooms >= search.MinBedrooms);
+            
+            if (!string.IsNullOrEmpty(search.PropertyType))
+                query = query.Where(p => p.PropertyType == search.PropertyType);
+        }
+        
+        return query.OrderBy(p => p.Id);
     }
 
     [UseDbContext(typeof(ApplicationDbContext))]
@@ -336,17 +438,107 @@ public class Query
         int id,
         [Service(ServiceKind.Resolver)] ApplicationDbContext dbContext)
     {
-        return await dbContext.Properties.FindAsync(id);
+        return await dbContext.Properties
+            .Where(p => p.IsActive && p.Id == id)
+            .FirstOrDefaultAsync();
     }
 
-    [Authorize]
+    // ⚠️ CRITICAL: Use fully qualified attribute to avoid conflicts
+    [HotChocolate.Authorization.Authorize]
     [UseDbContext(typeof(ApplicationDbContext))]
-    public async Task<User?> GetCurrentUser(
+    [UsePaging]
+    public IQueryable<Property> GetFavoriteProperties(
+        [Service(ServiceKind.Resolver)] ApplicationDbContext dbContext,
+        [GlobalState("UserId")] int userId)
+    {
+        return dbContext.FavoriteProperties
+            .Where(fp => fp.UserId == userId)
+            .Select(fp => fp.Property)
+            .Where(p => p.IsActive);
+    }
+
+    [HotChocolate.Authorization.Authorize]  // ⚠️ CRITICAL: Fully qualified to avoid ambiguity
+    [UseDbContext(typeof(ApplicationDbContext))]
+    public async Task<User?> GetMe(
         [Service(ServiceKind.Resolver)] ApplicationDbContext dbContext,
         [GlobalState("UserId")] int userId)
     {
         return await dbContext.Users.FindAsync(userId);
     }
+
+    // ⚠️ CRITICAL: Mortgage calculation query with correct field names
+    public MortgageCalculationResult CalculateMortgage(MortgageCalculationInput input)
+    {
+        var principal = input.LoanAmount - input.DownPayment;
+        var monthlyRate = input.InterestRate / 100 / 12;
+        var totalPayments = input.LoanTermYears * 12;
+        
+        var monthlyPayment = principal * (monthlyRate * Math.Pow(1 + monthlyRate, totalPayments)) 
+                           / (Math.Pow(1 + monthlyRate, totalPayments) - 1);
+        
+        var schedule = new List<AmortizationScheduleItem>();
+        var balance = principal;
+        
+        for (int i = 1; i <= totalPayments; i++)
+        {
+            var interestPayment = balance * monthlyRate;
+            var principalPayment = monthlyPayment - interestPayment;
+            balance -= principalPayment;
+            
+            schedule.Add(new AmortizationScheduleItem
+            {
+                PaymentNumber = i,          // ⚠️ CRITICAL: Match DTO property names
+                PaymentAmount = monthlyPayment,
+                PrincipalAmount = principalPayment,
+                InterestAmount = interestPayment,
+                RemainingBalance = Math.Max(0, balance)
+            });
+        }
+        
+        return new MortgageCalculationResult
+        {
+            MonthlyPayment = monthlyPayment,
+            TotalInterest = schedule.Sum(s => s.InterestAmount),
+            TotalPayment = monthlyPayment * totalPayments,
+            AmortizationSchedule = schedule
+        };
+    }
+}
+
+// ⚠️ CRITICAL: Input types that match frontend expectations
+public class PropertySearchInput
+{
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public decimal? MinPrice { get; set; }
+    public decimal? MaxPrice { get; set; }
+    public int? MinBedrooms { get; set; }
+    public string? PropertyType { get; set; }
+}
+
+public class MortgageCalculationInput
+{
+    public decimal LoanAmount { get; set; }
+    public decimal DownPayment { get; set; }
+    public decimal InterestRate { get; set; }
+    public int LoanTermYears { get; set; }
+}
+
+public class MortgageCalculationResult
+{
+    public decimal MonthlyPayment { get; set; }
+    public decimal TotalInterest { get; set; }
+    public decimal TotalPayment { get; set; }
+    public List<AmortizationScheduleItem> AmortizationSchedule { get; set; } = new();
+}
+
+public class AmortizationScheduleItem
+{
+    public int PaymentNumber { get; set; }
+    public decimal PaymentAmount { get; set; }
+    public decimal PrincipalAmount { get; set; }
+    public decimal InterestAmount { get; set; }
+    public decimal RemainingBalance { get; set; }
 }
 ```
 
@@ -481,15 +673,38 @@ else
 fi
 ```
 
-### Step 4.2: Verify/Install Dependencies  
-Dependencies should already be configured in NextJS-LendPro's package.json. Verify and install if needed:
+### Step 4.2: Install Dependencies with Known Working Versions
+⚠️ **CRITICAL**: Use these specific versions to avoid compatibility issues:
+
 ```bash
-# Check if all required dependencies are installed
-npm list @apollo/client graphql axios react-hook-form || \
-npm install @apollo/client graphql axios react-hook-form @hookform/resolvers zod \
-  recharts chart.js react-chartjs-2 date-fns bcryptjs jsonwebtoken \
-  @radix-ui/react-checkbox @radix-ui/react-select @radix-ui/react-progress \
-  clsx tailwind-merge lucide-react
+# Remove any problematic existing dependencies
+rm -rf node_modules package-lock.json
+
+# Install with exact versions that are known to work
+npm install \
+  @apollo/client@^3.8.8 \
+  graphql@^16.8.1 \
+  axios@^1.6.2 \
+  react-hook-form@^7.48.2 \
+  @hookform/resolvers@^3.3.2 \
+  zod@^3.22.4 \
+  recharts@^2.8.0 \
+  react-chartjs-2@^5.2.0 \
+  chart.js@^4.4.0 \
+  date-fns@^2.30.0 \
+  bcryptjs@^2.4.3 \
+  jsonwebtoken@^9.0.2 \
+  @radix-ui/react-checkbox@^1.0.4 \
+  @radix-ui/react-select@^2.0.0 \
+  @radix-ui/react-progress@^1.0.3 \
+  clsx@^2.0.0 \
+  tailwind-merge@^2.0.0 \
+  lucide-react@^0.294.0
+
+# ⚠️ CRITICAL: Also install Next.js auth if not present
+npm install next-auth@^4.24.5
+
+echo "✅ Dependencies installed with tested versions"
 ```
 
 ### Step 4.3: Verify Next.js Configuration
@@ -512,19 +727,31 @@ export default {
 }
 ```
 
-### Step 4.4: Verify Apollo Client Configuration
-Apollo Client should already be configured in NextJS-LendPro. Verify or create lib/apollo-client.ts:
+### Step 4.4: Create Production-Ready Apollo Client Configuration
+⚠️ **CRITICAL**: This configuration includes fixes for real-world API integration issues:
 
 ```typescript
-import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
+import { onError } from '@apollo/client/link/error';
+import axios from 'axios';
+
+// ⚠️ CRITICAL: Ensure correct port configuration
+const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:5001/graphql';
+const REST_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 const httpLink = createHttpLink({
-  uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:5001/graphql',
+  uri: GRAPHQL_ENDPOINT,
 });
 
+// ⚠️ CRITICAL: Proper authentication link with error handling
 const authLink = setContext((_, { headers }) => {
-  const token = localStorage.getItem('auth_token');
+  // Handle both browser and server-side rendering
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem('auth_token');
+  }
+  
   return {
     headers: {
       ...headers,
@@ -533,8 +760,27 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
+// ⚠️ CRITICAL: Error handling link for debugging GraphQL issues
+const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
+  if (graphQLErrors) {
+    graphQLErrors.forEach(({ message, locations, path }) => {
+      console.error(
+        `GraphQL error: Message: ${message}, Location: ${locations}, Path: ${path}`
+      );
+    });
+  }
+
+  if (networkError) {
+    console.error(`Network error: ${networkError}`);
+    // Handle 400 errors specifically
+    if ('statusCode' in networkError && networkError.statusCode === 400) {
+      console.error('GraphQL 400 error - check query syntax and field names');
+    }
+  }
+});
+
 export const apolloClient = new ApolloClient({
-  link: authLink.concat(httpLink),
+  link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache({
     typePolicies: {
       Property: {
@@ -544,26 +790,74 @@ export const apolloClient = new ApolloClient({
           },
         },
       },
+      Query: {
+        fields: {
+          properties: {
+            keyArgs: ['search'], // ⚠️ CRITICAL: Correct cache key for search
+            merge(existing = { edges: [] }, incoming) {
+              return {
+                ...incoming,
+                edges: [...existing.edges, ...incoming.edges],
+              };
+            },
+          },
+        },
+      },
     },
   }),
   defaultOptions: {
     query: {
       errorPolicy: 'all',
+      fetchPolicy: 'cache-and-network', // ⚠️ CRITICAL: Ensure fresh data
     },
   },
 });
 
-// REST API client for non-GraphQL endpoints
+// ⚠️ CRITICAL: REST API client with proper configuration
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api',
+  baseURL: REST_API_URL,
+  timeout: 10000, // 10 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// ⚠️ CRITICAL: Request interceptor with error handling
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    console.error('API request error:', error);
+    return Promise.reject(error);
   }
-  return config;
+);
+
+// ⚠️ CRITICAL: Response interceptor for handling auth errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Handle authentication errors
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ⚠️ CRITICAL: Server-side API client for SSR
+export const serverApiClient = axios.create({
+  baseURL: REST_API_URL,
+  timeout: 5000,
 });
 ```
 
@@ -740,21 +1034,23 @@ export function MortgageCalculator() {
 }
 ```
 
-### Step 4.7: Create Property Search with GraphQL
-Create app/search/page.tsx:
+### Step 4.7: Create Property Search with Fixed GraphQL Queries
+⚠️ **CRITICAL**: This search page includes fixes for common GraphQL integration issues:
 
 ```typescript
 'use client'
 
-import { useState } from 'react'
-import { useQuery, gql } from '@apollo/client'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, gql } from '@apollo/client'
 import { PropertyCard } from '@/components/property/property-card'
 import { PropertyFilters } from '@/components/property/property-filters'
+import { Button } from '@/components/ui/button'
 import { apolloClient } from '@/lib/apollo-client'
 
+// ⚠️ CRITICAL: Correct parameter name and field names
 const SEARCH_PROPERTIES_QUERY = gql`
-  query SearchProperties($first: Int, $after: String, $where: PropertyFilterInput) {
-    properties(first: $first, after: $after, where: $where) {
+  query SearchProperties($first: Int, $after: String, $search: PropertySearchInput) {
+    properties(first: $first, after: $after, search: $search) {
       edges {
         node {
           id
@@ -767,7 +1063,9 @@ const SEARCH_PROPERTIES_QUERY = gql`
           bathrooms
           squareFeet
           propertyType
+          description
           imageUrl
+          listedDate
           isFavorite
         }
         cursor
@@ -780,26 +1078,97 @@ const SEARCH_PROPERTIES_QUERY = gql`
   }
 `
 
+// ⚠️ CRITICAL: Toggle favorite mutation with proper error handling
+const TOGGLE_FAVORITE_MUTATION = gql`
+  mutation ToggleFavoriteProperty($propertyId: Int!) {
+    toggleFavoriteProperty(propertyId: $propertyId) {
+      property {
+        id
+        isFavorite
+      }
+      isFavorite
+      errors {
+        message
+        code
+      }
+    }
+  }
+`
+
 export default function PropertySearch() {
   const [filters, setFilters] = useState({})
   
-  const { data, loading, error, fetchMore } = useQuery(SEARCH_PROPERTIES_QUERY, {
+  const { data, loading, error, fetchMore, refetch } = useQuery(SEARCH_PROPERTIES_QUERY, {
     client: apolloClient,
     variables: {
       first: 12,
-      where: filters,
+      search: filters,  // ⚠️ CRITICAL: Use 'search' not 'where'
     },
+    errorPolicy: 'all',  // ⚠️ CRITICAL: Show partial data even with errors
   })
+
+  const [toggleFavorite] = useMutation(TOGGLE_FAVORITE_MUTATION, {
+    client: apolloClient,
+    onError: (error) => {
+      console.error('Error toggling favorite:', error);
+    },
+    // ⚠️ CRITICAL: Optimistic UI update
+    optimisticResponse: (vars) => ({
+      toggleFavoriteProperty: {
+        property: {
+          id: vars.propertyId,
+          isFavorite: true, // Will be corrected by real response
+          __typename: 'Property'
+        },
+        isFavorite: true,
+        errors: [],
+        __typename: 'ToggleFavoriteResult'
+      }
+    }),
+    // ⚠️ CRITICAL: Update cache after mutation
+    update: (cache, { data: mutationData }) => {
+      if (mutationData?.toggleFavoriteProperty?.property) {
+        cache.modify({
+          id: cache.identify(mutationData.toggleFavoriteProperty.property),
+          fields: {
+            isFavorite: () => mutationData.toggleFavoriteProperty.isFavorite
+          }
+        });
+      }
+    }
+  });
+
+  const handleToggleFavorite = async (propertyId: number) => {
+    try {
+      await toggleFavorite({
+        variables: { propertyId }
+      });
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
+  };
 
   const loadMore = () => {
     if (data?.properties?.pageInfo?.hasNextPage) {
       fetchMore({
         variables: {
           after: data.properties.pageInfo.endCursor,
+          first: 12,
+          search: filters,
         },
       })
     }
   }
+
+  // ⚠️ CRITICAL: Add debugging information
+  useEffect(() => {
+    if (error) {
+      console.error('Properties query error:', error);
+    }
+    if (data) {
+      console.log('Properties data loaded:', data.properties?.edges?.length, 'properties');
+    }
+  }, [data, error]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -811,18 +1180,50 @@ export default function PropertySearch() {
         </div>
         
         <div className="lg:col-span-3">
-          {loading && <div>Loading properties...</div>}
-          {error && <div>Error loading properties</div>}
+          {loading && <div className="text-center py-8">Loading properties...</div>}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              Error loading properties: {error.message}
+              <button 
+                onClick={() => refetch()} 
+                className="ml-2 text-red-800 underline"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+          
+          {data?.properties?.edges?.length === 0 && !loading && (
+            <div className="text-center py-8 text-gray-500">
+              No properties found. Try adjusting your search criteria.
+            </div>
+          )}
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {data?.properties?.edges?.map(({ node }) => (
-              <PropertyCard key={node.id} property={node} />
+              <PropertyCard 
+                key={node.id} 
+                property={node} 
+                onToggleFavorite={handleToggleFavorite}
+              />
             ))}
           </div>
           
           {data?.properties?.pageInfo?.hasNextPage && (
             <div className="text-center mt-8">
-              <Button onClick={loadMore}>Load More</Button>
+              <Button onClick={loadMore} disabled={loading}>
+                {loading ? 'Loading...' : 'Load More'}
+              </Button>
+            </div>
+          )}
+          
+          {/* ⚠️ CRITICAL: Debug information in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-8 p-4 bg-gray-100 rounded text-sm">
+              <strong>Debug Info:</strong><br />
+              Total properties: {data?.properties?.edges?.length || 0}<br />
+              Has more: {data?.properties?.pageInfo?.hasNextPage ? 'Yes' : 'No'}<br />
+              Error: {error ? error.message : 'None'}
             </div>
           )}
         </div>
@@ -1137,40 +1538,73 @@ Rocket-LendPro/
 
 ---
 
-## CRITICAL SUCCESS VALIDATION
+## ⚠️ CRITICAL SUCCESS VALIDATION WITH REAL-WORLD FIXES
 
-Before completion, verify:
+**Before marking migration complete, verify each item and fix any issues:**
 
 ### Backend (.NET 8 + GraphQL) ✅
-- [ ] Target framework updated to net8.0
-- [ ] All NuGet packages updated including HotChocolate
-- [ ] Program.cs implements minimal API pattern
-- [ ] GraphQL endpoint available at /graphql
-- [ ] REST endpoints remain functional
-- [ ] JWT authentication works for both APIs
-- [ ] CORS configured for port 3000
+- [ ] Target framework updated to net8.0 in ALL .csproj files
+- [ ] All NuGet packages updated with exact working versions
+- [ ] Program.cs uses minimal API with explicit port configuration (5001)
+- [ ] GraphQL endpoint responds at http://localhost:5001/graphql
+- [ ] REST endpoints remain functional at http://localhost:5001/api
+- [ ] JWT authentication works for BOTH REST and GraphQL
+- [ ] CORS includes ALL frontend ports (3000, 4200, 8080)
+- [ ] Health check endpoint works at /health
+- [ ] No ambiguous `[Authorize]` attributes (use HotChocolate.Authorization.Authorize)
+- [ ] PropertyType explicitly registered in GraphQL configuration
+- [ ] Database seeding works correctly
 
-### Frontend (Next.js 15) ✅
-- [ ] Apollo Client configured for GraphQL
-- [ ] REST client configured for calculations
-- [ ] All calculators implemented with accuracy
-- [ ] Multi-step forms with validation
-- [ ] Property search using GraphQL
-- [ ] Authentication integrated
-- [ ] Images loading properly
+### Frontend (Next.js 15) ✅  
+- [ ] Apollo Client configured with error handling
+- [ ] REST client (Axios) configured for calculations
+- [ ] All components use REAL API calls (not mock data)
+- [ ] GraphQL queries use correct field names (search vs where, isFavorite vs isFavorited)
+- [ ] Property detail pages fetch from API (not hardcoded data)
+- [ ] Favorite functionality calls backend and updates UI
+- [ ] Dashboard shows real favorite properties (not mock data)
+- [ ] AmortizationChart handles null/undefined data gracefully
+- [ ] Package.json uses tested, compatible versions
+- [ ] Images have fallback handling for 404 errors
 
-### Integration ✅
-- [ ] Frontend connects to both REST and GraphQL
-- [ ] Authentication flows work end-to-end
-- [ ] Real-time updates for favorites
-- [ ] Calculator results match original
-- [ ] Form submissions process correctly
+### Critical Data Flow Fixes ✅
+- [ ] Property search parameter is `search:` not `where:`
+- [ ] Amortization fields match backend: paymentNumber, paymentAmount, principalAmount, interestAmount, remainingBalance
+- [ ] All GraphQL queries include exact field names from backend schema
+- [ ] No components rely on hardcoded mock arrays
+- [ ] API clients point to correct ports (5001, not 5002/5003)
+- [ ] Authentication tokens work for both GraphQL and REST
 
-### Deployment ✅
-- [ ] run-app.sh starts both services
+### Integration & Runtime ✅
+- [ ] Frontend connects to both REST and GraphQL successfully
+- [ ] No "Cannot read properties of undefined" errors
+- [ ] No GraphQL 400 errors in backend logs
+- [ ] Favorite toggle works end-to-end
+- [ ] Property detail pages load real data
+- [ ] Dashboard shows actual user favorites count
+- [ ] No package version compatibility errors
+- [ ] All API calls succeed (no CORS issues)
+
+### Deployment & Startup ✅
+- [ ] run-app.sh starts both services without errors
+- [ ] Backend health check passes before frontend starts
 - [ ] Services accessible at correct URLs
-- [ ] No console errors or warnings
+- [ ] No console errors or warnings in browser
+- [ ] GraphQL playground accessible
+- [ ] Swagger docs accessible
 - [ ] Performance meets requirements
+- [ ] All test accounts work for login
+
+## ⚠️ COMMON ISSUES TO CHECK FOR:
+
+1. **GraphQL 400 Errors**: Check field names match exactly between frontend queries and backend schema
+2. **Property Not Found**: Ensure components use API calls, not hardcoded data
+3. **Favorites Not Syncing**: Verify favorite mutations call backend and update cache
+4. **Package Install Failures**: Use specific tested versions, not latest
+5. **Port Conflicts**: Ensure consistent port 5001 in all configs
+6. **Auth Failures**: Check JWT token handling in both GraphQL and REST
+7. **Null Reference Errors**: Add null checks in all components expecting data
+8. **CORS Issues**: Include all possible frontend ports in backend CORS config
 
 **MIGRATION COMPLETE** - The Rocket-LendPro platform now features a modern .NET 8 backend with dual REST/GraphQL APIs and a Next.js 15 frontend, combining implementations from:
 - DotNET-LendPro (.NET 8 migration)  
