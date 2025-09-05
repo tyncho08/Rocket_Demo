@@ -266,7 +266,29 @@ personalInfo: {
 }
 ```
 
-#### 12. **Complete Mock Data Removal**
+#### 12. **Loan Application REST to GraphQL Migration**
+**Problem**: Loan application tries to POST to /api/loans REST endpoint in GraphQL-only backend
+**Solution**: Create GraphQL service for loan applications:
+```typescript
+// Create loan.service.ts in lib/graphql/services/
+// Map complex multi-step form data to simplified GraphQL mutation
+const transformFormDataToGraphQLInput = (formData: LoanApplicationFormData) => {
+  return {
+    loanAmount: formData.loanDetails.loanAmount,
+    propertyValue: formData.loanDetails.propertyValue,
+    downPayment: formData.loanDetails.downPayment,
+    interestRate: formData.loanDetails.interestRate,
+    loanTermYears: formData.loanDetails.loanTermYears,
+    annualIncome: calculateTotalAnnualIncome(formData),
+    employmentStatus: formData.employmentInfo.employmentStatus,
+    employer: formData.employmentInfo.currentEmployment?.employer || null,
+    notes: buildNotesFromCompleteForm(formData)
+  };
+};
+```
+**Important**: Backend CreateLoanApplication mutation expects simplified input, not full form data
+
+#### 13. **Complete Mock Data Removal**
 **Problem**: Components still use mock data instead of GraphQL
 **Solution**: Replace ALL mock data with GraphQL queries:
 ```typescript

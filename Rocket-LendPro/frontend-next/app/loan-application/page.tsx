@@ -31,7 +31,7 @@ import {
 } from '@/lib/schemas/loan-application.schema';
 
 import { useLoanStore } from '@/lib/store/use-loan-store';
-import { loanService } from '@/lib/api';
+import { loanService } from '@/lib/graphql/services/loan.service';
 import { ChevronLeft, ChevronRight, Save, Send, AlertCircle, CheckCircle } from 'lucide-react';
 
 const steps = [

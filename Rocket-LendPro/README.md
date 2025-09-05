@@ -325,6 +325,14 @@ dotnet test          # Run tests
 - Pay special attention to conditional fields (like previousAddress in loan application)
 - Ensure all field paths in defaultValues match the schema exactly
 
+#### Loan Application 404 Error
+**Symptoms**: POST http://localhost:5001/api/loans returns 404
+**Solution**:
+- Backend is GraphQL-only, no REST endpoints exist
+- Use GraphQL mutations for all data operations
+- Create service layer that transforms complex form data to GraphQL mutations
+- Import loan service from `@/lib/graphql/services/loan.service`
+
 ### Port Conflicts
 The startup script automatically cleans ports 3000 and 5001. If issues persist:
 ```bash

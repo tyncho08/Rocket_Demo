@@ -96,6 +96,11 @@ The **Rocket-LendPro** application is a complete mortgage lending platform that 
 - **Solution**: Initialize all form fields including optional ones with default values
 - **Impact**: Stable form behavior without React warnings
 
+### 6. **Loan Application REST API Error**
+- **Problem**: Loan submission failed with 404 error on /api/loans endpoint
+- **Solution**: Created GraphQL service to replace REST API calls
+- **Impact**: Successful loan application submissions using GraphQL
+
 ## 🛠️ How to Use This Repository
 
 ### 1. **To Run the Final Application**
