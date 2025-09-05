@@ -318,6 +318,13 @@ dotnet test          # Run tests
 - Check that Apollo Client uses session tokens, not localStorage
 - Ensure JWT token expiration matches between frontend and backend
 
+#### React Controlled/Uncontrolled Input Errors
+**Symptoms**: Console warning "A component is changing an uncontrolled input to be controlled"
+**Solution**:
+- Initialize all form fields with default values (empty strings, not undefined)
+- Pay special attention to conditional fields (like previousAddress in loan application)
+- Ensure all field paths in defaultValues match the schema exactly
+
 ### Port Conflicts
 The startup script automatically cleans ports 3000 and 5001. If issues persist:
 ```bash

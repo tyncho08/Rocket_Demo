@@ -91,6 +91,14 @@ export default function LoanApplicationPage() {
           yearsAtAddress: 0,
           monthsAtAddress: 0
         },
+        previousAddress: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          yearsAtAddress: 0,
+          monthsAtAddress: 0
+        },
         ...formData.personalInfo
       },
       employmentInfo: {

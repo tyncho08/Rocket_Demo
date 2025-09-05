@@ -91,6 +91,11 @@ The **Rocket-LendPro** application is a complete mortgage lending platform that 
 - **Solution**: PropertyImage component with elegant fallback
 - **Impact**: Professional and consistent interface
 
+### 5. **React Controlled/Uncontrolled Input Error**
+- **Problem**: Error when conditional form fields appear in loan application
+- **Solution**: Initialize all form fields including optional ones with default values
+- **Impact**: Stable form behavior without React warnings
+
 ## 🛠️ How to Use This Repository
 
 ### 1. **To Run the Final Application**

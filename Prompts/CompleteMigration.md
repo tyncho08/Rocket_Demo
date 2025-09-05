@@ -236,7 +236,37 @@ useEffect(() => {
 }, [watchedValues.loanAmount, watchedValues.downPayment]);
 ```
 
-#### 11. **Complete Mock Data Removal**
+#### 11. **React Controlled/Uncontrolled Input Errors**
+**Problem**: "A component is changing an uncontrolled input to be controlled" error in loan application form when conditional fields appear
+**Solution**: Always initialize ALL form fields with default values, even optional/conditional ones:
+```typescript
+// In loan-application/page.tsx defaultValues
+personalInfo: {
+  firstName: '',
+  lastName: '',
+  // ... other fields
+  currentAddress: {
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    yearsAtAddress: 0,
+    monthsAtAddress: 0
+  },
+  // CRITICAL: Initialize previousAddress even though it's conditional
+  previousAddress: {
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    yearsAtAddress: 0,
+    monthsAtAddress: 0
+  },
+  ...formData.personalInfo
+}
+```
+
+#### 12. **Complete Mock Data Removal**
 **Problem**: Components still use mock data instead of GraphQL
 **Solution**: Replace ALL mock data with GraphQL queries:
 ```typescript
