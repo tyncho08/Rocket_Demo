@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@apollo/client';
+import { useSession } from 'next-auth/react';
 import { Navbar } from '@/components/layouts/navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,25 +47,39 @@ const loanTypeOptions = [
 ];
 
 export default function AdminDashboard() {
+  const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'users'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loanTypeFilter, setLoanTypeFilter] = useState('all');
+
+  // Debug session info
+  console.log('Session:', session);
+  console.log('User role:', (session as any)?.user?.role);
 
   // GraphQL queries
   const { data: metricsData, loading: metricsLoading, error: metricsError } = useQuery(GET_DASHBOARD_METRICS_QUERY, {
     errorPolicy: 'all'
   });
 
-  const { data: applicationsData, loading: applicationsLoading } = useQuery(GET_ALL_LOAN_APPLICATIONS_QUERY, {
+  const { data: applicationsData, loading: applicationsLoading, error: applicationsError } = useQuery(GET_ALL_LOAN_APPLICATIONS_QUERY, {
     variables: { first: 50 },
     errorPolicy: 'all'
   });
 
-  const { data: usersData, loading: usersLoading } = useQuery(GET_USERS_QUERY, {
+  const { data: usersData, loading: usersLoading, error: usersError } = useQuery(GET_USERS_QUERY, {
     variables: { first: 50 },
     errorPolicy: 'all'
   });
+
+  // Debug logs
+  console.log('Session:', session);
+  console.log('User role:', (session as any)?.user?.role);
+  console.log('Applications Data:', applicationsData);
+  console.log('Applications Error:', applicationsError);
+  console.log('Metrics Data:', metricsData);
+  console.log('Metrics Error:', metricsError);
+  console.log('Raw applications edges:', applicationsData?.allLoanApplications?.edges);
 
   // Extract data from GraphQL responses
   const overview = metricsData?.dashboardMetrics || {
@@ -413,6 +428,12 @@ export default function AdminDashboard() {
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
                   <p className="text-gray-600">Loading applications...</p>
+                </div>
+              ) : applicationsError ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-600">Error loading applications: {applicationsError.message}</p>
+                  <pre className="mt-2 text-xs text-gray-600">{JSON.stringify(applicationsError, null, 2)}</pre>
                 </div>
               ) : (
                 <>

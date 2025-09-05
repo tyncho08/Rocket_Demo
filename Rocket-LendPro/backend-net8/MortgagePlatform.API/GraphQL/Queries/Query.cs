@@ -2,6 +2,7 @@ using HotChocolate;
 using HotChocolate.Data;
 using HotChocolate.Types;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MortgagePlatform.API.Data;
 using MortgagePlatform.API.Models;
 using MortgagePlatform.API.Services;
@@ -222,13 +223,21 @@ public class Query
     [UseSorting]
     public IQueryable<LoanApplication> GetAllLoanApplications(
         [Service(ServiceKind.Resolver)] ApplicationDbContext dbContext,
+        [Service] ILogger<Query> logger,
+        [GlobalState("UserId")] int userId,
+        [GlobalState("UserRole")] string userRole,
         AdminSearchInput? search)
     {
+        logger.LogInformation("GetAllLoanApplications called - UserId: {UserId}, UserRole: {UserRole}", userId, userRole);
+        
         var query = dbContext.LoanApplications
             .Include(la => la.User)
             .Include(la => la.Documents)
             .Include(la => la.Payments)
             .AsQueryable();
+        
+        var count = query.Count();
+        logger.LogInformation("Total loan applications in database: {Count}", count);
         
         if (search != null)
         {

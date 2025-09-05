@@ -30,17 +30,17 @@ namespace MortgagePlatform.API.Models
         public decimal AnnualIncome { get; set; }
         
         [StringLength(50)]
-        public string EmploymentStatus { get; set; }
+        public string? EmploymentStatus { get; set; }
         
         [StringLength(100)]
-        public string Employer { get; set; }
+        public string? Employer { get; set; }
         
         [Required]
         [StringLength(50)]
         public string Status { get; set; } = "Pending";
         
         [StringLength(1000)]
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         

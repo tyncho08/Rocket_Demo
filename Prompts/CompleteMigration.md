@@ -318,6 +318,22 @@ myLoanApplications(first: $first) {
 const applications = data?.myLoanApplications?.edges?.map(edge => edge.node) || [];
 ```
 
+#### 14. **Nullable Fields in Entity Framework Models**
+**Problem**: "Column 'Notes' is null" exception when querying loan applications with null optional fields
+**Solution**: Make optional string fields nullable in Entity Framework models:
+```csharp
+// In LoanApplication.cs model
+[StringLength(50)]
+public string? EmploymentStatus { get; set; }  // Add ? for nullable
+
+[StringLength(100)]
+public string? Employer { get; set; }  // Add ? for nullable
+
+[StringLength(1000)]
+public string? Notes { get; set; }  // Add ? for nullable
+```
+**Important**: This prevents InvalidCastException when EF Core tries to read null values from database
+
 #### 14. **Complete Mock Data Removal**
 **Problem**: Components still use mock data instead of GraphQL
 **Solution**: Replace ALL mock data with GraphQL queries:
