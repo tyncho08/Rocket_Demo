@@ -145,7 +145,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-200 text-center text-gray-600">
-            <p>&copy; 2024 LendPro. All rights reserved.</p>
+            <p>&copy; 2025 LendPro. All rights reserved.</p>
           </div>
         </div>
       </footer>
