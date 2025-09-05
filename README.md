@@ -101,6 +101,11 @@ The **Rocket-LendPro** application is a complete mortgage lending platform that 
 - **Solution**: Created GraphQL service to replace REST API calls
 - **Impact**: Successful loan application submissions using GraphQL
 
+### 7. **GraphQL Connection Type Errors**
+- **Problem**: Field access errors on paginated GraphQL queries (MyLoanApplicationsConnection)
+- **Solution**: Updated queries to use proper edges/nodes pattern for connection types
+- **Impact**: Correct data fetching from paginated GraphQL endpoints
+
 ## 🛠️ How to Use This Repository
 
 ### 1. **To Run the Final Application**

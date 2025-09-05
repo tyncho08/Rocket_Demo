@@ -333,6 +333,14 @@ dotnet test          # Run tests
 - Create service layer that transforms complex form data to GraphQL mutations
 - Import loan service from `@/lib/graphql/services/loan.service`
 
+#### GraphQL Connection Type Errors
+**Symptoms**: "The field `id` does not exist on the type `MyLoanApplicationsConnection`"
+**Solution**:
+- Queries with `[UsePaging]` attribute return connection types with edges/nodes
+- Access fields through: `data.myLoanApplications.edges.map(edge => edge.node)`
+- Update all paginated queries to use connection pattern
+- Check backend Query.cs for `[UsePaging]` attributes to identify connection types
+
 ### Port Conflicts
 The startup script automatically cleans ports 3000 and 5001. If issues persist:
 ```bash

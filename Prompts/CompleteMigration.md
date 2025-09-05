@@ -288,7 +288,37 @@ const transformFormDataToGraphQLInput = (formData: LoanApplicationFormData) => {
 ```
 **Important**: Backend CreateLoanApplication mutation expects simplified input, not full form data
 
-#### 13. **Complete Mock Data Removal**
+#### 13. **GraphQL Connection Types Pattern**
+**Problem**: GraphQL errors "field does not exist on type MyLoanApplicationsConnection" when querying paginated results
+**Solution**: Use proper connection pattern with edges/nodes for queries with [UsePaging] attribute:
+```typescript
+// WRONG - Direct field access
+myLoanApplications(first: $first) {
+  id
+  loanAmount
+  status
+}
+
+// CORRECT - Connection pattern
+myLoanApplications(first: $first) {
+  edges {
+    node {
+      id
+      loanAmount
+      status
+    }
+  }
+  pageInfo {
+    hasNextPage
+    endCursor
+  }
+}
+
+// Extract nodes when using the data
+const applications = data?.myLoanApplications?.edges?.map(edge => edge.node) || [];
+```
+
+#### 14. **Complete Mock Data Removal**
 **Problem**: Components still use mock data instead of GraphQL
 **Solution**: Replace ALL mock data with GraphQL queries:
 ```typescript

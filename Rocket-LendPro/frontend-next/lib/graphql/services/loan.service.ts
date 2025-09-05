@@ -32,25 +32,33 @@ const CREATE_LOAN_APPLICATION_MUTATION = gql`
 const GET_MY_LOAN_APPLICATIONS_QUERY = gql`
   query GetMyLoanApplications($first: Int = 10) {
     myLoanApplications(first: $first) {
-      id
-      loanAmount
-      propertyValue
-      downPayment
-      interestRate
-      loanTermYears
-      annualIncome
-      employmentStatus
-      employer
-      status
-      notes
-      createdAt
-      updatedAt
-      documents {
-        id
-        fileName
-        documentType
-        uploadedAt
-        fileSize
+      edges {
+        node {
+          id
+          loanAmount
+          propertyValue
+          downPayment
+          interestRate
+          loanTermYears
+          annualIncome
+          employmentStatus
+          employer
+          status
+          notes
+          createdAt
+          updatedAt
+          documents {
+            id
+            fileName
+            documentType
+            uploadedAt
+            fileSize
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -197,7 +205,8 @@ export const loanService = {
         fetchPolicy: 'network-only'
       });
 
-      return data.myLoanApplications || [];
+      // Extract nodes from the connection structure
+      return data.myLoanApplications?.edges?.map((edge: any) => edge.node) || [];
     } catch (error: any) {
       console.error('Error fetching loan applications:', error);
       return [];
